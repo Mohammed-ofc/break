@@ -1,7 +1,7 @@
 /* ==========================================================================
    Cute & Girly 1-Hour Break Calculator Script
-   Features: Real-time Timestamp Tracking (100% Background/Mobile Screen Lock Proof),
-             Auto-Reset, Multi-day Table Log, Daily Affirmations & Hearts Burst
+   Features: Bulletproof Absolute Target End Timestamp Architecture
+             (100% Mobile Background, Screen Lock & App Swap Proof)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,12 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   // State Variables
-  let baseSecondsTaken = 0; // Accumulated seconds from previous segments
-  let secondsTaken = 0;     // Current total seconds taken today
   let secondsRemaining = TOTAL_BREAK_SECONDS;
+  let secondsTaken = 0;
   let isRunning = false;
+  let targetEndTimestamp = null; // Absolute timestamp (ms) when 1 hour completes
+  let sessionStartTimestamp = null; // Timestamp (ms) when current break segment started
   let timerInterval = null;
-  let sessionStartTimestamp = null; // Date.now() timestamp when current active break segment started
   let breakLogs = [];
 
   // DOM Elements
@@ -80,7 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
       this.x += this.speedX;
       this.y += this.speedY;
       this.speedY += this.gravity;
-      this.rotation += this.spin;
       this.opacity -= 0.015;
     }
 
@@ -167,23 +166,44 @@ document.addEventListener('DOMContentLoaded', () => {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  // Recalculate exact seconds elapsed using real Date timestamps (Background & Lock Screen Safe!)
+  // Bulletproof Timer Calculation based on Absolute Target Timestamp
   function recalculateTimer() {
-    if (isRunning && sessionStartTimestamp) {
+    if (isRunning && targetEndTimestamp) {
       const now = Date.now();
-      const elapsedSec = Math.floor((now - sessionStartTimestamp) / 1000);
-      secondsTaken = Math.min(baseSecondsTaken + elapsedSec, TOTAL_BREAK_SECONDS);
-      secondsRemaining = Math.max(TOTAL_BREAK_SECONDS - secondsTaken, 0);
+      const remainingMs = targetEndTimestamp - now;
+      const remainingSec = Math.max(Math.ceil(remainingMs / 1000), 0);
+
+      secondsRemaining = remainingSec;
+      secondsTaken = TOTAL_BREAK_SECONDS - secondsRemaining;
 
       if (secondsRemaining <= 0) {
         handleAutoResetCompletedBreak();
         return;
       }
-    } else {
-      secondsTaken = Math.min(baseSecondsTaken, TOTAL_BREAK_SECONDS);
-      secondsRemaining = Math.max(TOTAL_BREAK_SECONDS - secondsTaken, 0);
     }
     updateUI();
+  }
+
+  // Save Current State to LocalStorage
+  function saveState() {
+    const todayStr = new Date().toDateString();
+    localStorage.setItem('break_date', todayStr);
+    localStorage.setItem('break_is_running', isRunning ? 'true' : 'false');
+    localStorage.setItem('break_seconds_remaining', secondsRemaining.toString());
+    
+    if (isRunning && targetEndTimestamp) {
+      localStorage.setItem('break_target_end_timestamp', targetEndTimestamp.toString());
+    } else {
+      localStorage.removeItem('break_target_end_timestamp');
+    }
+
+    if (isRunning && sessionStartTimestamp) {
+      localStorage.setItem('break_session_start_timestamp', sessionStartTimestamp.toString());
+    } else {
+      localStorage.removeItem('break_session_start_timestamp');
+    }
+
+    localStorage.setItem('break_history_all', JSON.stringify(breakLogs));
   }
 
   // Load Saved Data from LocalStorage
@@ -201,56 +221,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (savedDate === todayStr) {
-      const savedBaseTaken = parseInt(localStorage.getItem('break_base_seconds_taken'), 10);
-      if (!isNaN(savedBaseTaken)) {
-        baseSecondsTaken = Math.min(savedBaseTaken, TOTAL_BREAK_SECONDS);
-      }
-
       const savedIsRunning = localStorage.getItem('break_is_running');
-      const savedStartTimestamp = parseInt(localStorage.getItem('break_start_timestamp'), 10);
+      const savedTargetTimestamp = parseInt(localStorage.getItem('break_target_end_timestamp'), 10);
+      const savedStartTimestamp = parseInt(localStorage.getItem('break_session_start_timestamp'), 10);
+      const savedRemaining = parseInt(localStorage.getItem('break_seconds_remaining'), 10);
 
-      if (savedIsRunning === 'true' && !isNaN(savedStartTimestamp)) {
+      if (savedIsRunning === 'true' && !isNaN(savedTargetTimestamp)) {
         isRunning = true;
-        sessionStartTimestamp = savedStartTimestamp;
-        
-        // Restore Green "Started" State UI
+        targetEndTimestamp = savedTargetTimestamp;
+        sessionStartTimestamp = savedStartTimestamp || (savedTargetTimestamp - TOTAL_BREAK_SECONDS * 1000);
+
+        // Update UI to Green Started state
         toggleBtn.className = 'action-btn started-state';
         btnText.textContent = 'Started';
         btnIcon.textContent = '🌸';
         timerStatusLabel.textContent = 'Enjoying break time... ✨';
 
         recalculateTimer();
-        startTimerInterval();
+        startTimerLoop();
       } else {
-        recalculateTimer();
+        isRunning = false;
+        if (!isNaN(savedRemaining)) {
+          secondsRemaining = Math.max(Math.min(savedRemaining, TOTAL_BREAK_SECONDS), 0);
+        } else {
+          secondsRemaining = TOTAL_BREAK_SECONDS;
+        }
+        secondsTaken = TOTAL_BREAK_SECONDS - secondsRemaining;
+        updateUI();
       }
     } else {
-      // Reset daily timer for new day
+      // New day reset
       localStorage.setItem('break_date', todayStr);
-      localStorage.setItem('break_base_seconds_taken', '0');
       localStorage.setItem('break_is_running', 'false');
-      localStorage.removeItem('break_start_timestamp');
+      localStorage.setItem('break_seconds_remaining', TOTAL_BREAK_SECONDS.toString());
+      localStorage.removeItem('break_target_end_timestamp');
+      localStorage.removeItem('break_session_start_timestamp');
 
-      baseSecondsTaken = 0;
-      secondsTaken = 0;
       secondsRemaining = TOTAL_BREAK_SECONDS;
+      secondsTaken = 0;
       isRunning = false;
+      targetEndTimestamp = null;
+      sessionStartTimestamp = null;
       updateUI();
     }
-  }
-
-  // Save Current State to LocalStorage
-  function saveState() {
-    const todayStr = new Date().toDateString();
-    localStorage.setItem('break_date', todayStr);
-    localStorage.setItem('break_base_seconds_taken', baseSecondsTaken.toString());
-    localStorage.setItem('break_is_running', isRunning ? 'true' : 'false');
-    if (isRunning && sessionStartTimestamp) {
-      localStorage.setItem('break_start_timestamp', sessionStartTimestamp.toString());
-    } else {
-      localStorage.removeItem('break_start_timestamp');
-    }
-    localStorage.setItem('break_history_all', JSON.stringify(breakLogs));
   }
 
   // Update UI Elements
@@ -291,13 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
     `).reverse().join('');
   }
 
-  // Start Interval for real-time UI ticks
-  function startTimerInterval() {
+  // Start fast high-frequency timer loop for fluid UI tick
+  function startTimerLoop() {
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       recalculateTimer();
-      saveState();
-    }, 1000);
+    }, 500);
   }
 
   // Toggle Timer Logic
@@ -310,7 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       isRunning = true;
-      sessionStartTimestamp = Date.now();
+      const now = Date.now();
+      sessionStartTimestamp = now;
+      targetEndTimestamp = now + (secondsRemaining * 1000);
 
       toggleBtn.className = 'action-btn started-state';
       btnText.textContent = 'Started';
@@ -320,12 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
       triggerHeartsBurst();
       setRandomAffirmation();
 
-      startTimerInterval();
       saveState();
       recalculateTimer();
+      startTimerLoop();
 
     } else {
-      // STOP / PAUSE BREAK TIMER
+      // PAUSE BREAK TIMER
       stopTimer(false);
     }
   }
@@ -348,9 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Reset timer back to 60 mins for next break
-    baseSecondsTaken = 0;
-    secondsTaken = 0;
     secondsRemaining = TOTAL_BREAK_SECONDS;
+    secondsTaken = 0;
+    targetEndTimestamp = null;
     sessionStartTimestamp = null;
 
     toggleBtn.className = 'action-btn enjoy-state';
@@ -370,17 +384,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function stopTimer(isComplete = false) {
     if (!isRunning) return;
 
+    recalculateTimer(); // Instant sync before pausing
+
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
-
-    const now = Date.now();
-    const durationSeconds = sessionStartTimestamp ? Math.round((now - sessionStartTimestamp) / 1000) : 0;
-    const startDate = sessionStartTimestamp ? new Date(sessionStartTimestamp) : new Date();
-
-    baseSecondsTaken = Math.min(baseSecondsTaken + durationSeconds, TOTAL_BREAK_SECONDS);
-    secondsTaken = baseSecondsTaken;
-    secondsRemaining = Math.max(TOTAL_BREAK_SECONDS - secondsTaken, 0);
     isRunning = false;
+
+    const startDate = sessionStartTimestamp ? new Date(sessionStartTimestamp) : new Date();
+    const durationSeconds = sessionStartTimestamp ? Math.round((Date.now() - sessionStartTimestamp) / 1000) : 0;
+
+    targetEndTimestamp = null;
     sessionStartTimestamp = null;
 
     if (durationSeconds >= 2) {
@@ -417,10 +430,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = null;
       isRunning = false;
+      targetEndTimestamp = null;
       sessionStartTimestamp = null;
-      baseSecondsTaken = 0;
-      secondsTaken = 0;
       secondsRemaining = TOTAL_BREAK_SECONDS;
+      secondsTaken = 0;
 
       toggleBtn.className = 'action-btn enjoy-state';
       btnText.textContent = 'Enjoy';
@@ -432,14 +445,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Recalculate on Mobile Visibility Change / Tab Resume / App Focus
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      recalculateTimer();
-    }
+  // Real-time synchronization events (Mobile unlock, tab switch, app resume, touch start)
+  ['visibilitychange', 'focus', 'pageshow', 'touchstart', 'click'].forEach(evt => {
+    window.addEventListener(evt, () => {
+      if (isRunning) {
+        recalculateTimer();
+        saveState();
+      }
+    }, { passive: true });
   });
-  window.addEventListener('focus', recalculateTimer);
-  window.addEventListener('pageshow', recalculateTimer);
 
   // Clear History Logs
   clearHistoryBtn.addEventListener('click', () => {
