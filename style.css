@@ -66,36 +66,6 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Background Sparkles Animation */
-.sparkles-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.sparkle {
-  position: absolute;
-  font-size: 1.5rem;
-  opacity: 0.6;
-  animation: floatSparkle 6s ease-in-out infinite alternate;
-}
-
-.sparkle-1 { top: 10%; left: 8%; animation-delay: 0s; }
-.sparkle-2 { top: 20%; right: 12%; animation-delay: 1.5s; }
-.sparkle-3 { bottom: 15%; left: 15%; animation-delay: 3s; }
-.sparkle-4 { bottom: 25%; right: 8%; animation-delay: 0.8s; }
-.sparkle-5 { top: 60%; left: 5%; animation-delay: 2.2s; }
-.sparkle-6 { top: 75%; right: 18%; animation-delay: 4.1s; }
-
-@keyframes floatSparkle {
-  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 0.4; }
-  100% { transform: translateY(-20px) scale(1.2) rotate(15deg); opacity: 0.8; }
-}
-
 /* Fullscreen Confetti Canvas */
 .confetti-canvas {
   position: fixed;
