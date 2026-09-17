@@ -1,7 +1,6 @@
 /* ==========================================================================
    Cute & Girly 1-Hour Break Calculator Script
-   Features: Absolute Target Timestamp Engine & Exact Time-Window Table Logging
-             (Start Time - End Time, Exact Seconds/Minutes, 100% Mobile Accuracy)
+   Features: Absolute Target Timestamp Engine & Always Start - End Range Logging
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -166,14 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
-  // Get precise time range string (e.g. "05:36 AM - 05:50 AM" or "05:36:14 AM")
+  // Helper to format exact time with optional seconds
+  function formatExactTime(d, showSeconds = false) {
+    const options = { hour: '2-digit', minute: '2-digit', hour12: true };
+    if (showSeconds) options.second = '2-digit';
+    return d.toLocaleTimeString([], options);
+  }
+
+  // ALWAYS returns a Start - End time range (e.g., "05:40:10 AM - 05:40:54 AM" or "05:40 AM - 05:42 AM")
   function getTimeRangeString(startDate, endDate) {
-    const startStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-    const endStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-    
-    if (startStr === endStr) {
-      return startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-    }
+    const diffSec = Math.round((endDate.getTime() - startDate.getTime()) / 1000);
+    const showSec = diffSec < 60; // Include seconds if segment is less than a minute
+    const startStr = formatExactTime(startDate, showSec);
+    const endStr = formatExactTime(endDate, showSec);
     return `${startStr} - ${endStr}`;
   }
 
