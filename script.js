@@ -1,7 +1,7 @@
 /* ==========================================================================
    Cute & Girly 1-Hour Break Calculator Script
-   Features: Bulletproof Absolute Target End Timestamp Architecture
-             (100% Mobile Background, Screen Lock & App Swap Proof)
+   Features: Absolute Target Timestamp Engine & Exact Time-Window Table Logging
+             (Start Time - End Time, Exact Seconds/Minutes, 100% Mobile Accuracy)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -164,6 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getFormattedDate(d = new Date()) {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // Get precise time range string (e.g. "05:36 AM - 05:50 AM" or "05:36:14 AM")
+  function getTimeRangeString(startDate, endDate) {
+    const startStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const endStr = endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    
+    if (startStr === endStr) {
+      return startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    }
+    return `${startStr} - ${endStr}`;
   }
 
   // Bulletproof Timer Calculation based on Absolute Target Timestamp
@@ -351,8 +362,9 @@ document.addEventListener('DOMContentLoaded', () => {
     isRunning = false;
 
     const startDate = sessionStartTimestamp ? new Date(sessionStartTimestamp) : new Date();
+    const endDate = new Date();
     const dateStr = getFormattedDate(startDate);
-    const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = getTimeRangeString(startDate, endDate);
 
     breakLogs.push({
       date: dateStr,
@@ -390,15 +402,17 @@ document.addEventListener('DOMContentLoaded', () => {
     timerInterval = null;
     isRunning = false;
 
+    const now = Date.now();
     const startDate = sessionStartTimestamp ? new Date(sessionStartTimestamp) : new Date();
-    const durationSeconds = sessionStartTimestamp ? Math.round((Date.now() - sessionStartTimestamp) / 1000) : 0;
+    const endDate = new Date(now);
+    const durationSeconds = sessionStartTimestamp ? Math.round((now - sessionStartTimestamp) / 1000) : 0;
 
     targetEndTimestamp = null;
     sessionStartTimestamp = null;
 
     if (durationSeconds >= 2) {
       const dateStr = getFormattedDate(startDate);
-      const timeStr = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeStr = getTimeRangeString(startDate, endDate);
       const durationStr = formatMinutesText(durationSeconds);
 
       breakLogs.push({
